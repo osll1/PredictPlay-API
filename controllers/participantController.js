@@ -1,18 +1,11 @@
 const Participant = require("../models/ParticipantModel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
-
+const path = require("path");
 
 
 
 exports.createParticipant = async (req, res) => {
-
-
-    // let email = req.body.email;
-    // const existingParticipant = await Participant.findOne({ email });
-    // if (existingParticipant) {
-    //     return res.status(409).json({ message: "Email already in use" });
-    // }
 
     const participantData = {
         userName: req.body.userName,
@@ -46,29 +39,29 @@ exports.login = async (req, res) => {
 
         const participant = await Participant.findOne({ email });
         if (!participant) {
-            console.log("User not found");
-            return res.status(400).json({ success: false, message: "User not found" });
+            return res.status(400).json({ success: false, message: "משתמש לא נמצא" });
         }
 
         const isMatch = await bcrypt.compare(password, participant.password);
 
         if (!isMatch) {
-            console.log("Invalid credentials");
-            return res.status(400).json({ success: false, message: "Invalid credentials" });
+            console.log("אישור פרטים שגוי");
+            return res.status(400).json({ success: false, message: "אימייל או סיסמה שגויים" });
         }
 
-        const token = jwt.sign({ id: participant._id, role: participant.role }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: participant._id, role: participant.role, userName: participant.userName }, process.env.JWT_SECRET, {
             expiresIn: '1h',
         });
 
         res.json({ success: true, token });
     } catch (error) {
-        console.error("Error during login:", error.message);
-        res.status(500).json({ success: false, message: "Server error" });
+        console.error("שגיאה במהלך התחברות:", error.message);
+        res.status(500).json({ success: false, message: "שגיאת שרת" });
     }
 };
 
-exports.updateParticipantPoints = async (req, res) => {
+
+ exports.updateParticipantPoints = async (req, res) => {
     try {
         const participant = await Participant.findByIdAndUpdate(
             req.params.id,
@@ -89,6 +82,52 @@ exports.getAllParticipants = async (req, res) => {
         res.status(404).json({ message: error.message });
     }
 };
+
+
+
+
+exports.updateParticipantImages = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // בדיקה אם הקבצים הועלו
+        const scorerImage = req.files?.scorerImage?.[0]?.path || null;
+        const winnerImage = req.files?.winnerImage?.[0]?.path || null;
+
+        if (!scorerImage && !winnerImage) {
+            return res.status(400).json({ message: "לא הועלו קבצים לעדכון" });
+        }
+
+       
+
+        const updates = {};
+        if (scorerImage) updates.scorerImage = path.normalize(scorerImage);
+        if (winnerImage) updates.winnerImage = path.normalize(winnerImage);
+
+
+        const updatedParticipant = await Participant.findByIdAndUpdate(
+            id,
+            updates,
+            { new: true } // מחזיר את המסמך המעודכן
+        );
+
+        if (!updatedParticipant) {
+            return res.status(404).json({ message: "משתמש לא נמצא" });
+        }
+
+        res.status(200).json({
+            message: "תמונות עודכנו בהצלחה",
+            updatedParticipant,
+        });
+    } catch (error) {
+        console.error("שגיאה בעדכון התמונות:", error);
+        res.status(500).json({ message: "שגיאת שרת", error: error.message });
+    }
+};
+
+
+
+
 
 exports.updatePrediction = async (req, res) => {
   
@@ -155,16 +194,61 @@ exports.deleteParticipant = async (req, res) => {
 
 
 // פונקציית הרשמה
+// exports.register = async (req, res) => {
+//     const { userName, email, password } = req.body;
+//     const scorerImage = req.files?.scorerImage?.[0]?.path;
+//     const winnerImage = req.files?.winnerImage?.[0]?.path;
+
+//     console.log("Received registration data:", { userName, email, password, scorerImage, winnerImage });
+
+//     if (!userName || !email || !password) {
+//         return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     try {
+//         let user = await Participant.findOne({ email });
+//         if (user) {
+//             return res.status(400).json({ message: "User already exists" });
+//         }
+
+//         user = new Participant({
+//             userName,
+//             email,
+//             password,
+//             scorerImage:"",
+//             winnerImage:"",
+//             role: "user"
+//         });
+
+//         await user.save();
+
+//         const payload = {
+//             user: {
+//                 id: user.id,
+//                 role: user.role,
+//             },
+//         };
+
+//         jwt.sign(
+//             payload,
+//             process.env.JWT_SECRET,
+//             { expiresIn: "1h" },
+//             (err, token) => {
+//                 if (err) throw err;
+//                 res.status(201).json({ token, user });
+//             }
+//         );
+//     } catch (error) {
+//         console.error("Error during registration:", error.message);
+//         res.status(500).send("Server error");
+//     }
+// };
+
+
+
+//שונה
 exports.register = async (req, res) => {
     const { userName, email, password } = req.body;
-    const scorerImage = req.files?.scorerImage?.[0]?.path;
-    const winnerImage = req.files?.winnerImage?.[0]?.path;
-
-    console.log("Received registration data:", { userName, email, password, scorerImage, winnerImage });
-
-    if (!userName || !email || !password || !scorerImage || !winnerImage) {
-        return res.status(400).json({ message: "All fields are required" });
-    }
 
     try {
         let user = await Participant.findOne({ email });
@@ -176,9 +260,9 @@ exports.register = async (req, res) => {
             userName,
             email,
             password,
-            scorerImage,
-            winnerImage,
-            role: "user"
+            scorerImage: null, // כברירת מחדל
+            winnerImage: null, // כברירת מחדל
+            role: "user",
         });
 
         await user.save();

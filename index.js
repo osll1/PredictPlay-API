@@ -14,10 +14,17 @@ const CONNECTION_URL = process.env.CONNECTION_URL;
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middlewares
-app.use(cors());
+ 
+
+app.use(cors({
+    origin: "http://localhost:3000", // או ה-URL של הלקוח
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"], // הוסף את x-auth-token
+}));
+
+
 app.use(bodyParser.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", cors() , express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/participants", participantRoutes);

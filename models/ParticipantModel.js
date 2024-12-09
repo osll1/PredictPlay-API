@@ -9,8 +9,8 @@ const participantSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
-  scorerImage: { type: String, required: true },
-  winnerImage: { type: String, required: true },
+  scorerImage: { type: String, },
+  winnerImage: { type: String,  },
   points: { type: Number, default: 0 },
   predictions: [
     {
