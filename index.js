@@ -62,7 +62,6 @@ const PORT = process.env.PORT || 5000;
 
 // הגדרת ה-CORS
 const allowedOrigins = [
-    "http://localhost:3000", // כתובת הפיתוח המקומית
     "https://predictplay.onrender.com", // כתובת האתר המפורסם
 ];
 
